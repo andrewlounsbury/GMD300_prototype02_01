@@ -18,14 +18,15 @@ public class WaveSpawner : MonoBehaviour
     public GameObject Spike1, Spike2, Spike3;
     public TextMeshProUGUI WaveText;
     public float TimeBetweenWaves = 10f;
-    public int TotalWaves = 6;
+    public int TotalWaves = 5;
     public int EnemiesPerWave = 10;
 
     //private variables, animator & list of spawned enemy objects
     private float countdown = 0;
-    private int waveNumber = 1;
+    private int waveNumber = 0;
     private Animator animator; 
     private List<GameObject> spawnedEnemies = new();
+    private bool canSpawn = true;
 
     void Start()
     {
@@ -38,19 +39,17 @@ public class WaveSpawner : MonoBehaviour
         //if the wave text existsm update it with a string reading "Wave" and add the current wave number to the tmpro UI object
         if (WaveText != null)
         {
+            if (waveNumber > TotalWaves)
+            {
+                return;
+            }
+
             WaveText.text = "Wave " + waveNumber;  
         }
     }
 
     void Update()
     {
-
-        //win condition: if player deeats all waves set, call win scene function 
-        if (waveNumber > TotalWaves)
-        {
-            WinScene();
-        }
-
         //gets number of enemies killed every frame 
         int enemiesKilled = 0;
 
@@ -60,47 +59,46 @@ public class WaveSpawner : MonoBehaviour
             if(enemy == null)
             {
                 enemiesKilled++;
-                Debug.Log(enemiesKilled); 
             }
         }
 
         //once the countdown hits 0 and the wave number is still lower than the total waves possible, 
         //start spawning enemies, hide the wave UI text, set the countdown timer back to its original state
-        if (countdown <= 0f && waveNumber <= TotalWaves)
+        if (canSpawn && waveNumber <= TotalWaves)
         {
             StartCoroutine(SpawnWave());
             animator.SetTrigger("WaveUIDisappear");
             countdown = TimeBetweenWaves;
+            canSpawn = false;
         }
 
         //if the amount of enemies killed is equivalent to the amount of enemies spawned, call update wave text function,  
         //start the countdown timer between waves, set the wave UI to trigger its appearance to show the next wave number 
-        if (enemiesKilled == spawnedEnemies.Count)
+        if (enemiesKilled == spawnedEnemies.Count && spawnedEnemies.Count != 0)
         {
-            UpdateWaveText();
-            countdown -= Time.deltaTime;
-            animator.SetTrigger("WaveUIAppear");
+            canSpawn = true;
+            animator.SetTrigger("WaveUiAppear");
         }
 
         //the following 4 if statements set traps active and inactive depending on the current wave number.
         //Should have used event systems, but due to time issues, this is the route i went down
-        if (waveNumber == 3)
+        if (waveNumber == 2)
         {
             Trap2.SetActive(false);
         }
 
-        if (waveNumber == 4)
+        if (waveNumber == 3)
         {
             Trap1.SetActive(false);
             Trap3.SetActive(false);
         }
 
-        if (waveNumber == 5)
+        if (waveNumber == 4)
         {
             Spike2.SetActive(true);
         }
 
-        if (waveNumber == 6)
+        if (waveNumber == 5)
         {
             Spike1.SetActive(true);
             Spike3.SetActive(true);
@@ -114,11 +112,22 @@ public class WaveSpawner : MonoBehaviour
         waveNumber++;
         spawnedEnemies.Clear();
 
+        //win condition: if player deeats all waves set, call win scene function 
+        if (waveNumber > TotalWaves)
+        {
+            WinScene();
+        }
+
+        UpdateWaveText();
+
+        yield return new WaitForSeconds(TimeBetweenWaves);
+
         for (int i = 0; i < EnemiesPerWave; i++)
         {
             SpawnEnemy();
             yield return new WaitForSeconds(1f);
         }
+
         //adds an enemy each wave 
         EnemiesPerWave++;
     }
